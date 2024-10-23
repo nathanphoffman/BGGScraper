@@ -1,0 +1,8 @@
+# dependencies
+node_modules/
+
+# output of results
+output/
+
+# caching for bgg
+cache.txt
