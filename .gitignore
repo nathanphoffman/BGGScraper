@@ -6,3 +6,6 @@ output/
 
 # caching for bgg
 cache.txt
+
+# ignore generated files
+dist/
