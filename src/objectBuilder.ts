@@ -36,6 +36,8 @@ function getRankedList(records) {
 
 function getMostDisagreedUpon(records) {
     let idx = 1;
+
+    // there is no point in getting more than top 500 as they may be poor and strange
     for(let record of records) {
         record.disagree = record.rank && record.rank > 0 && idx < 500 ? record.rank - idx : -9999;
         record.nateRank = idx;
@@ -43,7 +45,11 @@ function getMostDisagreedUpon(records) {
     }
 
     records.sort((a, b) => parseFloat(b.disagree) - parseFloat(a.disagree));
-    return records;
+    return records.filter(x=>x.disagree !== -9999).map((game,idx)=>`${game.title} (${game.releaseDate}) BGG #${game.rank} -> NOW #${game.nateRank}, ${-game.disagree}`).join('\n');
+}
+
+function getMostRecent(records) {
+    return records.filter(x=>x.releaseDate > 2021).map((game,idx)=>`${idx+1}. ${game.title} (${game.releaseDate}) #${game.rank}`).join('\n');
 }
 
 export function scoreRecordsAndRecord(records, bias, bias_multiplier, added_bias) {
@@ -53,14 +59,19 @@ export function scoreRecordsAndRecord(records, bias, bias_multiplier, added_bias
         record.score = Math.pow((record.average/10), biasFactor)*Math.log10(record.num);
     }
     
-    records.sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
-    writeFile(records,`output/output_scores_${bias}.json`);
+    let newRecords = records.filter((x)=>!!x.score);
 
-    const list = getRankedList([...records]);
+    newRecords.sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
+    writeFile(newRecords,`output/output_scores_${bias}.json`);
+
+    const list = getRankedList([...newRecords]);
     writeFileText(list, `output/output_scores_${bias}.txt`);
 
-    const mostDisagreed = getMostDisagreedUpon([...records]);
-    writeFile(mostDisagreed,`output/output_scores_${bias}_disagree.json`);
+    const mostDisagreed = getMostDisagreedUpon([...newRecords]);
+    writeFileText(mostDisagreed,`output/output_scores_${bias}_disagree.txt`);
+
+    const mostRecent = getMostRecent([...newRecords]);
+    writeFileText(mostRecent,`output/output_scores_${bias}_recent.txt`);
 
 }
 

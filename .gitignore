@@ -5,7 +5,7 @@ node_modules/
 output/
 
 # caching for bgg
-cache.txt
+cache*
 
 # ignore generated files
 dist/

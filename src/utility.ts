@@ -16,7 +16,7 @@ export function getDupIndex(arr,item,index) {
 
     let idx = 0;
     for(let element of arr) {
-        if(element.title === item.title && idx !== index) return idx;
+        if(element.title === item.title && element.releaseDate === item.releaseDate && idx !== index) return idx;
         idx++;
     }
 
