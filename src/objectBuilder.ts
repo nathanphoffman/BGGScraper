@@ -39,7 +39,7 @@ function getMostDisagreedUpon(records) {
 
     // there is no point in getting more than top 500 as they may be poor and strange
     for(let record of records) {
-        record.disagree = record.rank && record.rank > 0 && idx < 500 ? record.rank - idx : -9999;
+        record.disagree = record.rank && record.rank > 0 && record.rank < 1000 ? record.rank - idx : -9999;
         record.nateRank = idx;
         idx++;
     }
@@ -49,7 +49,14 @@ function getMostDisagreedUpon(records) {
 }
 
 function getMostRecent(records) {
-    return records.filter(x=>x.releaseDate > 2021).map((game,idx)=>`${idx+1}. ${game.title} (${game.releaseDate}) #${game.rank}`).join('\n');
+    let output = '';
+    for(let year = 2024; year > 2000; year--) {
+        const games = records.filter(x=>Number(x.releaseDate) === year).map((game,idx)=>`${idx+1}. ${game.title} (${game.releaseDate}) #${game.rank}`);
+        const fiftyGames = [...games].slice(0,50).join('\n');
+        output += `${year}\n----------\n${fiftyGames}\n\n-----------\n`;
+    }
+
+    return output;
 }
 
 export function scoreRecordsAndRecord(records, bias, bias_multiplier, added_bias) {

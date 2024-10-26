@@ -36,6 +36,7 @@ export async function getAllWeights() {
     console.log("array has length ", arr.length);
 
     const arrDefined = clean(arr);
+    /*
     arrDefined.push({
         "title": "King of Tokyo: Duel",
         "average": "7.37",
@@ -43,6 +44,7 @@ export async function getAllWeights() {
         "num": "153",
         "releaseDate": "2024"    
     });
+*/
 
     const mergedRecords = mergeDuplicateRecords(arrDefined);
 
@@ -57,7 +59,7 @@ export async function getAllWeights() {
     }
 
     // best settings I found was a bias multipler of x2 and a bias addition of 0.25 (ontop of the +1) using the 1.8-weight output
-    [0,1,1.5,2,2.5,3,3.5,4,4.5,5].forEach((bias)=>scoreRecordsAndRecord([...mergedRecords], bias, 2, 0.25));
+    [0,1,1.5,1.6,1.7,1.8,1.9,2,2.1,2.2,2.3,2.4,2.5,3,3.5,4,4.5,5].forEach((bias)=>scoreRecordsAndRecord([...mergedRecords], bias, 2, 0.25));
     console.log("Records recorded");
 
 }
