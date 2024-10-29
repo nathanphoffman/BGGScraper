@@ -1,5 +1,7 @@
 
 import * as fs from 'fs';
+//import {mkdir} from 'fs';
+import { mkdir } from 'node:fs';
 
 export function writeFile(obj,name) {
     const json = JSON.stringify(obj);
@@ -30,4 +32,10 @@ export function writeFileText(text,name) {
 
 export function getFileText(path) {
     return fs.readFileSync(path, 'utf8');
+}
+
+export function makeDirectory(dir: string, fn: any) {
+    if(!dir) return;
+    // Creates /tmp/a/apple, regardless of whether `/tmp` and /tmp/a exist.
+     mkdir(dir,fn);
 }
