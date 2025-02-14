@@ -2,10 +2,12 @@
 node_modules/
 
 # output of results
-output/
+output*/
 
 # caching for bgg
 cache*
 
 # ignore generated files
 dist/
+
+RANKINGS*.txt

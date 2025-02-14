@@ -21,7 +21,9 @@ export function memoize(link) {
 
     try {
         let dataString = getFileText('cache.txt');
-        data = JSON.parse(dataString);
+
+        if(dataString) data = JSON.parse(dataString);
+
         if (data && data[link]) {
             console.log("found cache")
             return Promise.resolve({ data: data[link], type: "cache" });

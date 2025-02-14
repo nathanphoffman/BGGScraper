@@ -31,7 +31,10 @@ export function writeFileText(text,name) {
 }
 
 export function getFileText(path) {
-    return fs.readFileSync(path, 'utf8');
+    if (fs.existsSync(path)) {
+        return fs.readFileSync(path, 'utf8');
+    }
+    else return null;
 }
 
 export function makeDirectory(dir: string, fn: any) {

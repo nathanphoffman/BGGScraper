@@ -47,13 +47,36 @@ function getMostDisagreedUpon(records) {
 
 function getMostRecent(records) {
     let output = '';
-    for (let year = 2024; year > 2000; year--) {
+    for (let year = 2025; year > 2000; year--) {
         const games = records.filter(x => Number(x.releaseDate) === year).map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${game.rank}`);
         const fiftyGames = [...games].slice(0, 50).join('\n');
         output += `${year}\n----------\n${fiftyGames}\n\n-----------\n`;
     }
 
     return output;
+}
+
+function getNewGameBias(records) {
+
+    // +1 covers the games that are newest releases
+    const currentYear = 2025+1;
+    const decadeOld = currentYear-5;
+    const twoDecadesOld = decadeOld - 5;
+    const modifier = 1.15;
+
+    for(let record of records) {
+        // if it is a very old game or we don't know the date we punish it even more:
+        if(!record.releaseDate || record.releaseDate < twoDecadesOld) {
+            record.score = record.score * (2-modifier);
+        }
+        else { 
+            const year = record.releaseDate < decadeOld ? decadeOld : record.releaseDate;
+            record.score = record.score*(1+Math.pow(year-decadeOld, modifier)/25);
+        }
+    }
+
+    records.sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
+    return records.map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${game.rank}`).join('\n');
 }
 
 export function scoreRecordsAndRecord(records, bias, bias_multiplier) {
@@ -67,6 +90,7 @@ export function scoreRecordsAndRecord(records, bias, bias_multiplier) {
     
             const bias_value = Math.abs(record.weight - bias);
             const bias_consideration = bias_multiplier;
+            const bias_base = 1.5;
     
             /*
                     Bias consideration should be between 1 and 4, but could go even higher in rare cases
@@ -76,7 +100,7 @@ export function scoreRecordsAndRecord(records, bias, bias_multiplier) {
                     4: ultra bias
             */
     
-            const biasFactor = bias === 0 ? 2 : 1 + 1 / bias_consideration + bias_consideration * (bias_value / bias_median);
+            const biasFactor = bias === 0 ? 2 : bias_base + bias_consideration * (bias_value / bias_median);
             record.score = Math.pow((record.average / 10), biasFactor) * Math.log10(record.num);
         }
     
@@ -99,6 +123,9 @@ export function scoreRecordsAndRecord(records, bias, bias_multiplier) {
         const mostRecent = getMostRecent([...newRecords]);
         writeFileText(mostRecent, `${path}/RANKINGS_BY_YEAR.txt`);
 
+        const favorNewGames = getNewGameBias([...newRecords]);
+        writeFileText(favorNewGames, `${path}/RANKINGS_BIAS_NEW.txt`);
+
     });
 
 }
@@ -111,6 +138,7 @@ function getPath(bias: string, bias_multiplier: string) {
         "4": "VERY much"
     }[bias_multiplier];
 */
+/*
     let dir: string = 'output/' + {
         "0": `0 - I prefer ALL games`,
         "1": `1 - I prefer light games`,
@@ -121,6 +149,9 @@ function getPath(bias: string, bias_multiplier: string) {
         "4": `4 - I prefer medium-heavy games`,
         "5": `5 - I prefer heavy games`
     }[bias];
-    return dir;
+    
+    */
+
+    return `output/${bias}`;
 };
 
