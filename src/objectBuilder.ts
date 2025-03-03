@@ -111,6 +111,8 @@ export function scoreRecordsAndRecord(records, bias, bias_multiplier) {
 
         const path: string = getPath(bias_copy, bias_multiplier_copy);
 
+        //!! create an output folder!!!
+
         newRecords.sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
         writeFile(newRecords, `${path}/raw_objects.json`);
 
