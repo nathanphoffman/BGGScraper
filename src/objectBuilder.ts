@@ -59,19 +59,19 @@ function getMostRecent(records) {
 function getNewGameBias(records) {
 
     // +1 covers the games that are newest releases
-    const currentYear = 2025+1;
-    const decadeOld = currentYear-5;
+    const currentYear = 2025 + 1;
+    const decadeOld = currentYear - 5;
     const twoDecadesOld = decadeOld - 5;
     const modifier = 1.15;
 
-    for(let record of records) {
+    for (let record of records) {
         // if it is a very old game or we don't know the date we punish it even more:
-        if(!record.releaseDate || record.releaseDate < twoDecadesOld) {
-            record.score = record.score * (2-modifier);
+        if (!record.releaseDate || record.releaseDate < twoDecadesOld) {
+            record.score = record.score * (2 - modifier);
         }
-        else { 
+        else {
             const year = record.releaseDate < decadeOld ? decadeOld : record.releaseDate;
-            record.score = record.score*(1+Math.pow(year-decadeOld, modifier)/25);
+            record.score = record.score * (1 + Math.pow(year - decadeOld, modifier) / 25);
         }
     }
 
@@ -79,45 +79,81 @@ function getNewGameBias(records) {
     return records.map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${game.rank}`).join('\n');
 }
 
+
+function getScoreWithBias(record, bias, bias_multiplier) {
+    const bias_median = Math.abs(5 - Math.abs(4 - bias)) / 2;
+    //const biasFactor = bias === 0 ? 2 : 1 + (added_bias + Math.abs(record.weight - bias))*bias_multiplier;
+
+    const bias_value = Math.abs(record.weight - bias);
+    const bias_base = 1.5; // this is a small bias incase bias_consideration is 0, if it was 1 there would be no bias at all
+
+    /*
+            Bias consideration should be between 1 and 4, but could go even higher in rare cases
+            1: minor bias
+            2: standard bias
+            3: heavy bias
+            4: ultra bias
+    */
+
+    const biasFactor = bias === 0 ? 2 : bias_base + bias_multiplier * (bias_value / bias_median);
+    return getCalculatedBias(record.average, biasFactor, record.num);
+}
+
+function getCalculatedBias(score, biasFactor, numberOfRatings) {
+    return Math.pow((score / 10), biasFactor) * Math.log10(numberOfRatings);
+}
+
+export function getRecordsWithBias(records, bias, bias_multiplier) {
+
+    for (let record of records) {
+        record.score = getScoreWithBias(record, bias, bias_multiplier);
+    }
+
+    return getRecordsWithScores(records);
+
+}
+
+function getRecordsWithScores(records) {
+    let newRecords = [...records.filter((x) => !!x.score)];
+    return newRecords;
+}
+
+export function getRecordsWithLightToHeavyBias(records) {
+
+    for (let record of records) {
+        if(!record.weight || isNaN(record.weight)) continue;
+        const newBias = record.weight < 2 ? 2 : 1.33 + record.weight/3;
+        record.score = getCalculatedBias(record.score, newBias, record.num);
+    }
+
+    return getRecordsWithScores(records);
+
+}
+
 export function scoreRecordsAndRecord(records, bias, bias_multiplier) {
 
     makeDirectory(getPath(String(bias), String(bias_multiplier)), () => {
 
-        for (let record of records) {
+        const newRecords = getRecordsWithBias(records, bias, bias_multiplier);
 
-            const bias_median = Math.abs(5 - Math.abs(4-bias)) / 2;
-            //const biasFactor = bias === 0 ? 2 : 1 + (added_bias + Math.abs(record.weight - bias))*bias_multiplier;
-    
-            const bias_value = Math.abs(record.weight - bias);
-            const bias_consideration = bias_multiplier;
-            const bias_base = 1.5;
-    
-            /*
-                    Bias consideration should be between 1 and 4, but could go even higher in rare cases
-                    1: minor bias
-                    2: standard bias
-                    3: heavy bias
-                    4: ultra bias
-            */
-    
-            const biasFactor = bias === 0 ? 2 : bias_base + bias_consideration * (bias_value / bias_median);
-            record.score = Math.pow((record.average / 10), biasFactor) * Math.log10(record.num);
-        }
-    
-        let newRecords = [...records.filter((x) => !!x.score)];
-
-        const bias_multiplier_copy : string = String(bias_multiplier);
-        const bias_copy : string = String(bias);
+        const bias_multiplier_copy: string = String(bias_multiplier);
+        const bias_copy: string = String(bias);
 
         const path: string = getPath(bias_copy, bias_multiplier_copy);
 
         //!! create an output folder!!!
-
         newRecords.sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
         writeFile(newRecords, `${path}/raw_objects.json`);
 
         const list = getRankedList([...newRecords]);
         writeFileText(list, `${path}/ALL_RANKINGS.txt`);
+
+        if (bias === 0) {
+            const preparedRecords = getRecordsWithLightToHeavyBias([...records]);
+            preparedRecords.sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
+            const heavyBias = getRankedList([...preparedRecords]);
+            writeFileText(heavyBias, `${path}/BIASED_AGAINST_HEAVY.txt`); 
+        }
 
         const mostDisagreed = getMostDisagreedUpon([...newRecords]);
         writeFileText(mostDisagreed, `${path}/disagreement.txt`);
@@ -133,26 +169,26 @@ export function scoreRecordsAndRecord(records, bias, bias_multiplier) {
 }
 
 function getPath(bias: string, bias_multiplier: string) {
-/*
-    let multiplier_text = {
-        "2": "somewhat",
-        "3": "",
-        "4": "VERY much"
-    }[bias_multiplier];
-*/
-/*
-    let dir: string = 'output/' + {
-        "0": `0 - I prefer ALL games`,
-        "1": `1 - I prefer light games`,
-        "2": `2 - I prefer medium-light games`,
-        "2.2": `2.2 - ish`,
-        "2.5": `2.5 - mediumish`,
-        "3": `3 - I prefer medium games`,
-        "4": `4 - I prefer medium-heavy games`,
-        "5": `5 - I prefer heavy games`
-    }[bias];
-    
+    /*
+        let multiplier_text = {
+            "2": "somewhat",
+            "3": "",
+            "4": "VERY much"
+        }[bias_multiplier];
     */
+    /*
+        let dir: string = 'output/' + {
+            "0": `0 - I prefer ALL games`,
+            "1": `1 - I prefer light games`,
+            "2": `2 - I prefer medium-light games`,
+            "2.2": `2.2 - ish`,
+            "2.5": `2.5 - mediumish`,
+            "3": `3 - I prefer medium games`,
+            "4": `4 - I prefer medium-heavy games`,
+            "5": `5 - I prefer heavy games`
+        }[bias];
+        
+        */
 
     return `output/${bias}`;
 };
