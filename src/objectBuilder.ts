@@ -49,7 +49,7 @@ function getMostRecent(records) {
     let output = '';
     for (let year = 2025; year > 2000; year--) {
         const games = records.filter(x => Number(x.releaseDate) === year).map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${game.rank}`);
-        const fiftyGames = [...games].slice(0, 50).join('\n');
+        const fiftyGames = [...games].slice(0, 75).join('\n');
         output += `${year}\n----------\n${fiftyGames}\n\n-----------\n`;
     }
 
@@ -80,23 +80,31 @@ function getNewGameBias(records) {
 }
 
 
-function getScoreWithBias(record, bias, bias_multiplier) {
-    const bias_median = Math.abs(5 - Math.abs(4 - bias)) / 2;
-    //const biasFactor = bias === 0 ? 2 : 1 + (added_bias + Math.abs(record.weight - bias))*bias_multiplier;
+function getScoreWithBias(record, bias, bias_ignore) {
 
-    const bias_value = Math.abs(record.weight - bias);
-    const bias_base = 1.5; // this is a small bias incase bias_consideration is 0, if it was 1 there would be no bias at all
+    let bias_distance = Math.abs(record.weight - bias);
+    let max_distance = bias < 2.5 ? 5 - bias : bias - 1;
+    let bias_coefficient = 4/max_distance;
+
+    const bias_base = 2; // this is a small bias incase bias_consideration is 0, if it was 1 there would be no bias at all
 
     /*
-            Bias consideration should be between 1 and 4, but could go even higher in rare cases
-            1: minor bias
-            2: standard bias
-            3: heavy bias
-            4: ultra bias
+            Bias consideration should be between 1 and 4:
+            0.5 = biased
+            1: heavy bias
+            2: very heavy bias
+            3: ultra bias
     */
 
-    const biasFactor = bias === 0 ? 2 : bias_base + bias_multiplier * (bias_value / bias_median);
-    return getCalculatedBias(record.average, biasFactor, record.num);
+    const biasFactor = bias === 0 ? bias_base : bias_base * (1 + bias_distance * bias_coefficient);
+
+    // 10% bias penalty
+    //const BIAS_PENALTY = 1;
+    //const average = Number(record.average) < BIAS_PENALTY ? BIAS_PENALTY : Number(record.average) - BIAS_PENALTY;
+    //const perfectScorePenaltyRemovalCorrection = 2 - Math.pow(1 - BIAS_PENALTY/10, bias_base);
+
+    const calculatedBias = getCalculatedBias(Number(record.average), biasFactor, record.num);
+    return calculatedBias;
 }
 
 function getCalculatedBias(score, biasFactor, numberOfRatings) {
