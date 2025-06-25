@@ -80,13 +80,12 @@ function getNewGameBias(records) {
 }
 
 
-function getScoreWithBias(record, bias, bias_ignore) {
+function getScoreWithBias(record, bias, bias_base) {
 
     let bias_distance = Math.abs(record.weight - bias);
-    let max_distance = bias < 2.5 ? 5 - bias : bias - 1;
-    let bias_coefficient = 4/max_distance;
-
-    const bias_base = 2; // this is a small bias incase bias_consideration is 0, if it was 1 there would be no bias at all
+    if (record.weight  > bias) bias_distance = bias_distance*2
+    //let max_distance = bias < 2.5 ? 5 - bias : bias - 1;
+    //let bias_coefficient = 4/max_distance;
 
     /*
             Bias consideration should be between 1 and 4:
@@ -96,14 +95,16 @@ function getScoreWithBias(record, bias, bias_ignore) {
             3: ultra bias
     */
 
-    const biasFactor = bias === 0 ? bias_base : bias_base * (1 + bias_distance * bias_coefficient);
+    const biasFactor = bias === 0 ? bias_base : bias_base * (2 + bias_distance);
 
     // 10% bias penalty
     //const BIAS_PENALTY = 1;
     //const average = Number(record.average) < BIAS_PENALTY ? BIAS_PENALTY : Number(record.average) - BIAS_PENALTY;
     //const perfectScorePenaltyRemovalCorrection = 2 - Math.pow(1 - BIAS_PENALTY/10, bias_base);
 
-    const calculatedBias = getCalculatedBias(Number(record.average), biasFactor, record.num);
+    const numAverage = Number(record.average);
+    const cappedAverage = numAverage > 8.75 ? 8.75 : numAverage;
+    const calculatedBias = getCalculatedBias(cappedAverage, biasFactor, record.num);
     return calculatedBias;
 }
 
