@@ -8,11 +8,14 @@ export async function getAllWeights() {
     const arr = [];
     // weights on bgg range from 1 to 5, but in practice there is no reason a weight should ever be anywhere close to 4.9 or above 
     // unless there is an anamoly, which we wouldn't want to pull in anyway
-    for (let count = 1; count < 4.9; count += 0.03) {
+    const INTERVAL = 0.015;
+
+    for (let count = 1; count < 4.9; count += INTERVAL) {
+
+        const min = Number(count - INTERVAL).toFixed(3);
 
         // a slight margin to account for rounding, duplicate board games are removed later on
-        const min = Number(count - 0.01).toFixed(2);
-        const max = Number(count + 0.04).toFixed(2)
+        const max = Number(count + INTERVAL/3).toFixed(3)
 
         console.log(min, max);
 
