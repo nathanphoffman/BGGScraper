@@ -47,6 +47,14 @@ export async function getAllWeights() {
         "releaseDate": "2020"
     });
 
+  arrDefined.push({
+        "title": "Ego Custom",
+        "average": "7.22",
+        "weight": 2.29, // weight override
+        "num": "243",
+        "releaseDate": "2025"
+    });
+
     const removedRecords = removeUnwantedRecords(arrDefined);
     const mergedRecords = mergeDuplicateRecords(removedRecords);
 
@@ -62,7 +70,7 @@ export async function getAllWeights() {
 
     // best settings I found was a bias multipler of x2 and a bias addition of 0.25 (ontop of the +1) using the 1.8-weight output
     //[0,1,2,3,4,5].forEach((bias)=>scoreRecordsAndRecord([...mergedRecords], bias, 2));
-    [0, 1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.1, 2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.8, 3, 3.5, 3.4, 3.6, 3.8, 4, 4.5, 5].forEach((bias) => scoreRecordsAndRecord([...mergedRecords], bias, 2));
+    [0, 1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.1, 2, 2.1, 2.2, 2.25, 2.3, 2.4, 2.5, 2.6, 2.8, 3, 3.5, 3.4, 3.6, 3.8, 4, 4.5, 5].forEach((bias) => scoreRecordsAndRecord([...mergedRecords], bias, 2));
     //[0,1,2,3,4,5].forEach((bias)=>scoreRecordsAndRecord([...mergedRecords], bias, 4));
     console.log("Records recorded");
 

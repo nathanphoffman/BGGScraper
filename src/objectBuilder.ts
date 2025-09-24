@@ -62,7 +62,7 @@ function getNewGameBias(records) {
     const currentYear = 2025 + 1;
     const decadeOld = currentYear - 5;
     const twoDecadesOld = decadeOld - 5;
-    const modifier = 1.15;
+    const modifier = 1.35;
 
     for (let record of records) {
         // if it is a very old game or we don't know the date we punish it even more:
