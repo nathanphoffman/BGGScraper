@@ -55,6 +55,15 @@ export async function getAllWeights() {
         "releaseDate": "2025"
     });
 
+
+      arrDefined.push({
+        "title": "Shadowscape custom",
+        "average": "6.2",
+        "weight": 2.44, // weight override
+        "num": "66",
+        "releaseDate": "2017"
+    });
+
     const removedRecords = removeUnwantedRecords(arrDefined);
     const mergedRecords = mergeDuplicateRecords(removedRecords);
 
