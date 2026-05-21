@@ -1,12 +1,13 @@
 import { mergeDuplicateRecords, scoreRecordsAndRecord } from "../objectBuilder";
 import { clean, sleep } from "../utility";
 import { getObjects } from "./parser";
+import { Game } from "../types/game";
 
 
-export async function getAllWeights() {
+export async function getAllWeights(): Promise<void> {
 
-    const arr = [];
-    // weights on bgg range from 1 to 5, but in practice there is no reason a weight should ever be anywhere close to 4.9 or above 
+    const arr: Game[] = [];
+    // weights on bgg range from 1 to 5, but in practice there is no reason a weight should ever be anywhere close to 4.9 or above
     // unless there is an anamoly, which we wouldn't want to pull in anyway
     const INTERVAL = 0.015;
 
@@ -15,12 +16,12 @@ export async function getAllWeights() {
         const min = Number(count - INTERVAL).toFixed(3);
 
         // a slight margin to account for rounding, duplicate board games are removed later on
-        const max = Number(count + INTERVAL/3).toFixed(3)
+        const max = Number(count + INTERVAL/3).toFixed(3);
 
         console.log(min, max);
 
         const { type, data } = await getObjects(min, max);
-        arr.push(...data);
+        arr.push(...clean(data));
 
         console.log("the data has length ", data.length);
         console.log("the results were", type);
@@ -36,35 +37,35 @@ export async function getAllWeights() {
 
     console.log("array has length ", arr.length);
 
-    const arrDefined = clean(arr);
-
     // custom overrides
-    arrDefined.push({
+    arr.push({
         "title": "Honey Buzz Custom",
         "average": "7.55",
         "weight": 2.5, // weight override
         "num": "7676",
+        "rank": "",
         "releaseDate": "2020"
     });
 
-  arrDefined.push({
+    arr.push({
         "title": "Ego Custom",
         "average": "7.22",
         "weight": 2.29, // weight override
         "num": "243",
+        "rank": "",
         "releaseDate": "2025"
     });
 
-
-      arrDefined.push({
+    arr.push({
         "title": "Shadowscape custom",
         "average": "6.2",
         "weight": 2.44, // weight override
         "num": "66",
+        "rank": "",
         "releaseDate": "2017"
     });
 
-    const removedRecords = removeUnwantedRecords(arrDefined);
+    const removedRecords = removeUnwantedRecords(arr);
     const mergedRecords = mergeDuplicateRecords(removedRecords);
 
     mergedRecords.sort((a, b) => parseFloat(a.rank) - parseFloat(b.rank));
@@ -77,16 +78,12 @@ export async function getAllWeights() {
         }
     }
 
-    // best settings I found was a bias multipler of x2 and a bias addition of 0.25 (ontop of the +1) using the 1.8-weight output
-    //[0,1,2,3,4,5].forEach((bias)=>scoreRecordsAndRecord([...mergedRecords], bias, 2));
     [0, 1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.1, 2, 2.1, 2.2, 2.25, 2.3, 2.4, 2.5, 2.6, 2.8, 3, 3.5, 3.4, 3.6, 3.8, 4, 4.5, 5].forEach((bias) => scoreRecordsAndRecord([...mergedRecords], bias, 2));
-    //[0,1,2,3,4,5].forEach((bias)=>scoreRecordsAndRecord([...mergedRecords], bias, 4));
     console.log("Records recorded");
-
 }
 
-function removeUnwantedRecords(records) {
-    const unwatedRecordsRemoved = records.filter(x => !(
+function removeUnwantedRecords(records: Game[]): Game[] {
+    return records.filter(x => !(
         x.title.toUpperCase().startsWith('UNDAUNTED')
         || x.title.toUpperCase().startsWith('UNMATCHED')
         || x.title.toUpperCase().startsWith('CLANK!')
@@ -98,6 +95,4 @@ function removeUnwantedRecords(records) {
         || x.title.toUpperCase().startsWith('CHRONICLES OF CRIME')
         || x.title.toUpperCase().startsWith('DICE THRONE')
     ));
-
-    return unwatedRecordsRemoved;
 }

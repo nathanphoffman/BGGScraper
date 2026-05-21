@@ -1,49 +1,60 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
-import { getFileText, writeFile } from "../file";
-import axios from "axios";
+puppeteer.use(StealthPlugin());
 
-const HEADER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36';
-const HEADER_ACCEPT = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+const CACHE_DIR = 'cache';
 
+function cachePathForUrl(url: string): string {
+    const hash = crypto.createHash('md5').update(url).digest('hex');
+    return path.join(CACHE_DIR, `${hash}.html`);
+}
 
-export function memoize(link) {
+function readCache(url: string): string | null {
+    const filePath = cachePathForUrl(url);
+    if (fs.existsSync(filePath)) {
+        return fs.readFileSync(filePath, 'utf8');
+    }
+    return null;
+}
 
-    let data = {};
+function writeCache(url: string, html: string): void {
+    if (!fs.existsSync(CACHE_DIR)) {
+        fs.mkdirSync(CACHE_DIR);
+    }
+    fs.writeFileSync(cachePathForUrl(url), html, 'utf8');
+}
 
-    const config = {
-        url: link,
-        method: 'get',
-        headers: {
-            'User-Agent': HEADER_USER_AGENT,
-            'Accept': HEADER_ACCEPT,
-        }
-    };
-
+async function fetchWithBrowser(link: string): Promise<string> {
+    const browser = await puppeteer.launch({ headless: true });
     try {
-        let dataString = getFileText('cache.txt');
+        const page = await browser.newPage();
+        await page.goto(link, { waitUntil: 'networkidle2', timeout: 60000 });
+        return await page.content();
+    } finally {
+        await browser.close();
+    }
+}
 
-        if(dataString) data = JSON.parse(dataString);
-
-        if (data && data[link]) {
-            console.log("found cache")
-            return Promise.resolve({ data: data[link], type: "cache" });
+export function memoize(link: string): Promise<{ data: string; type: string }> {
+    try {
+        const cached = readCache(link);
+        if (cached) {
+            console.log("found cache");
+            return Promise.resolve({ data: cached, type: "cache" });
         }
-        else {
 
-            // !! hack for now until config is implemented
-            //throw "this should not happen, in offline mode!";
-
-            // !! this is a hack for now until we can figure out axios types 
-            return axios(config).then((response) => {
-                console.log("NO CACHE FOUND - MAKING CALL TO BGG");
-                data[link] = response.data;
-                writeFile(data, 'cache.txt');
-                return { data: response.data, type: "call" };
-            });
-        }
+        console.log("NO CACHE FOUND - MAKING CALL TO BGG");
+        return fetchWithBrowser(link).then((html) => {
+            writeCache(link, html);
+            return { data: html, type: "call" };
+        });
     }
     catch (err) {
         console.log("a cache error was encountered");
-        console.log(err);
+        throw err;
     }
 }
