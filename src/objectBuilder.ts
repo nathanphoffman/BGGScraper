@@ -74,13 +74,13 @@ function getNewGameBias(records: Game[]): string {
 }
 
 
-function getScoreWithBias(record: Game, bias: number, bias_base: number): number {
+function getScoreWithBias(record: Game, bias: number, bias_multiplier: number, bias_base: number): number {
 
     let bias_distance = Math.abs(record.weight - bias);
 
     // this punishes heavier games over the weight preference twice as much as lighter games since lighter games are easier to get to the table
     if (record.weight > bias) bias_distance = bias_distance * 2;
-    const biasFactor = bias === 0 ? bias_base : bias_base * (1 + bias_distance);
+    const biasFactor = bias === 0 ? bias_base : bias_base + bias_multiplier * bias_distance;
 
     const numAverage = Number(record.average);
     const cappedAverage = numAverage > 8.75 ? 8.75 : numAverage;
@@ -93,10 +93,10 @@ function getCalculatedBias(score: number, biasFactor: number, numberOfRatings: n
     return Math.pow((score / 10), biasFactor) * Math.log10(numberOfRatings);
 }
 
-export function getRecordsWithBias(records: Game[], bias: number, bias_multiplier: number): Game[] {
+export function getRecordsWithBias(records: Game[], bias: number, bias_multiplier: number, bias_base: number): Game[] {
 
     for (let record of records) {
-        record.score = getScoreWithBias(record, bias, bias_multiplier);
+        record.score = getScoreWithBias(record, bias, bias_multiplier, bias_base);
     }
 
     return getRecordsWithScores(records);
@@ -117,11 +117,11 @@ export function getRecordsWithLightToHeavyBias(records: Game[]): Game[] {
     return getRecordsWithScores(records);
 }
 
-export function scoreRecordsAndRecord(records: Game[], bias: number, bias_multiplier: number): void {
+export function scoreRecordsAndRecord(records: Game[], bias: number, bias_multiplier: number, bias_base: number): void {
 
     makeDirectory(getPath(String(bias), String(bias_multiplier)), () => {
 
-        const newRecords = getRecordsWithBias(records, bias, bias_multiplier);
+        const newRecords = getRecordsWithBias(records, bias, bias_multiplier, bias_base);
 
         const path: string = getPath(String(bias), String(bias_multiplier));
 

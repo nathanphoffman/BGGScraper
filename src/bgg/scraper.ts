@@ -27,8 +27,8 @@ export async function getAllWeights(): Promise<void> {
         console.log("the results were", type);
         console.log("getting objects for, ", min, max);
 
-        // base 3 second wait
-        const duration = 3000 + Math.random() * 1000 * (Math.random() * 30);
+        // 10-60 second wait
+        const duration = 10000 + Math.random() * 1000 * (Math.random() * 50);
         if (type === "call") {
             console.log("made a call to bgg, sleeping for ", duration);
             await sleep(duration);
@@ -78,7 +78,7 @@ export async function getAllWeights(): Promise<void> {
         }
     }
 
-    [0, 1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.1, 2, 2.1, 2.2, 2.25, 2.3, 2.4, 2.5, 2.6, 2.8, 3, 3.5, 3.4, 3.6, 3.8, 4, 4.5, 5].forEach((bias) => scoreRecordsAndRecord([...mergedRecords], bias, 2));
+    [0, 1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.1, 2, 2.1, 2.2, 2.25, 2.3, 2.4, 2.5, 2.6, 2.8, 3, 3.5, 3.4, 3.6, 3.8, 4, 4.5, 5].forEach((bias) => scoreRecordsAndRecord([...mergedRecords], bias, 1, 2));
     console.log("Records recorded");
 }
 
