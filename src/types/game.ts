@@ -1,9 +1,9 @@
 export interface Game {
     title: string;
-    average: string;
+    average: number;
     weight: number;
-    num: string;
-    rank: string;
+    num: number;
+    rank: number | null;
     releaseDate: string;
     score?: number;
     disagree?: number;

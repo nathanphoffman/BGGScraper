@@ -28,15 +28,23 @@ function writeCache(url: string, html: string): void {
     fs.writeFileSync(cachePathForUrl(url), html, 'utf8');
 }
 
+// one browser is shared by every request, it is opened on the first call to bgg
+let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
+
 async function fetchWithBrowser(link: string): Promise<string> {
-    const browser = await puppeteer.launch({ headless: true });
+    browser ??= await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
     try {
-        const page = await browser.newPage();
         await page.goto(link, { waitUntil: 'networkidle2', timeout: 60000 });
         return await page.content();
     } finally {
-        await browser.close();
+        await page.close();
     }
+}
+
+export async function closeBrowser(): Promise<void> {
+    await browser?.close();
+    browser = null;
 }
 
 export async function memoize(link: string): Promise<{ data: string; type: string }> {

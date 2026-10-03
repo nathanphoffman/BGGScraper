@@ -1,6 +1,10 @@
 import { writeFile, writeFileText, makeDirectory } from "./file";
 import { Game } from "./types/game";
 
+// how strongly distance from the preferred weight lowers a score
+const BIAS_BASE = 2;
+const BIAS_MULTIPLIER = 1;
+
 // each game gets its own copy so one bias run can't change the scores of another
 function copyRecords(records: Game[]): Game[] {
     return records.map(record => ({ ...record }));
@@ -22,8 +26,12 @@ export function mergeDuplicateRecords(arr: Game[]): Game[] {
     }));
 }
 
+function formatRank(rank: number | null): string {
+    return rank === null ? '' : String(rank);
+}
+
 function getRankedList(records: Game[]): string {
-    return records.map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${game.rank}`).join('\n');
+    return records.map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${formatRank(game.rank)}`).join('\n');
 }
 
 function getMostDisagreedUpon(records: Game[]): string {
@@ -31,20 +39,20 @@ function getMostDisagreedUpon(records: Game[]): string {
 
     // there is no point in getting more than top 500 as they may be poor and strange
     for (let record of records) {
-        record.disagree = record.rank && Number(record.rank) > 0 && Number(record.rank) < 1000 ? Number(record.rank) - idx : -9999;
+        record.disagree = record.rank !== null && record.rank > 0 && record.rank < 1000 ? record.rank - idx : -9999;
         record.nateRank = idx;
         idx++;
     }
 
     records.sort((a, b) => (b.disagree ?? 0) - (a.disagree ?? 0));
-    return records.filter(x => x.disagree !== -9999).map((game) => `${game.title} (${game.releaseDate}) BGG #${game.rank} -> NOW #${game.nateRank}, ${-(game.disagree ?? 0)}`).join('\n');
+    return records.filter(x => x.disagree !== -9999).map((game) => `${game.title} (${game.releaseDate}) BGG #${formatRank(game.rank)} -> NOW #${game.nateRank}, ${-(game.disagree ?? 0)}`).join('\n');
 }
 
 function getMostRecent(records: Game[]): string {
     let output = '';
     const currentYear = new Date().getFullYear();
     for (let year = currentYear; year > 2000; year--) {
-        const games = records.filter(x => Number(x.releaseDate) === year).map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${game.rank}`);
+        const games = records.filter(x => Number(x.releaseDate) === year).map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${formatRank(game.rank)}`);
         const topGames = games.slice(0, 75).join('\n');
         output += `${year}\n----------\n${topGames}\n\n-----------\n`;
     }
@@ -72,22 +80,21 @@ function getNewGameBias(records: Game[]): string {
     }
 
     records.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-    return records.map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${game.rank}`).join('\n');
+    return getRankedList(records);
 }
 
 
-function getScoreWithBias(record: Game, bias: number, bias_multiplier: number, bias_base: number): number {
+function getScoreWithBias(record: Game, bias: number): number {
 
     let bias_distance = Math.abs(record.weight - bias);
 
     // this punishes heavier games over the weight preference twice as much as lighter games since lighter games are easier to get to the table
     if (record.weight > bias) bias_distance = bias_distance * 2;
-    const biasFactor = bias === 0 ? bias_base : bias_base + bias_multiplier * bias_distance;
+    const biasFactor = bias === 0 ? BIAS_BASE : BIAS_BASE + BIAS_MULTIPLIER * bias_distance;
 
-    const numAverage = Number(record.average);
-    const cappedAverage = numAverage > 8.75 ? 8.75 : numAverage;
+    const cappedAverage = record.average > 8.75 ? 8.75 : record.average;
 
-    const calculatedBias = getCalculatedBias(cappedAverage, biasFactor, Number(record.num));
+    const calculatedBias = getCalculatedBias(cappedAverage, biasFactor, record.num);
     return calculatedBias;
 }
 
@@ -95,11 +102,11 @@ function getCalculatedBias(score: number, biasFactor: number, numberOfRatings: n
     return Math.pow((score / 10), biasFactor) * Math.log10(numberOfRatings);
 }
 
-export function getRecordsWithBias(records: Game[], bias: number, bias_multiplier: number, bias_base: number): Game[] {
+export function getRecordsWithBias(records: Game[], bias: number): Game[] {
 
     const copies = copyRecords(records);
     for (let record of copies) {
-        record.score = getScoreWithBias(record, bias, bias_multiplier, bias_base);
+        record.score = getScoreWithBias(record, bias);
     }
 
     return getRecordsWithScores(copies);
@@ -115,18 +122,18 @@ export function getRecordsWithLightToHeavyBias(records: Game[]): Game[] {
     for (let record of copies) {
         if (!record.weight || isNaN(record.weight)) continue;
         const newBias = record.weight < 2 ? 2 : 1.33 + record.weight / 3;
-        record.score = getCalculatedBias(record.score ?? 0, newBias, Number(record.num));
+        record.score = getCalculatedBias(record.score ?? 0, newBias, record.num);
     }
 
     return getRecordsWithScores(copies);
 }
 
-export function scoreRecordsAndRecord(records: Game[], bias: number, bias_multiplier: number, bias_base: number): void {
+export function scoreRecordsAndRecord(records: Game[], bias: number): void {
 
-    const path: string = getPath(String(bias), String(bias_multiplier));
+    const path: string = getPath(bias);
     makeDirectory(path);
 
-    const newRecords = getRecordsWithBias(records, bias, bias_multiplier, bias_base);
+    const newRecords = getRecordsWithBias(records, bias);
 
     newRecords.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     writeFile(newRecords, `${path}/raw_objects.json`);
@@ -152,6 +159,6 @@ export function scoreRecordsAndRecord(records: Game[], bias: number, bias_multip
     writeFileText(favorNewGames, `${path}/RANKINGS_BIAS_NEW.txt`);
 }
 
-function getPath(bias: string, bias_multiplier: string): string {
+function getPath(bias: number): string {
     return `output/${bias}`;
 }

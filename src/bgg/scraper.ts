@@ -1,6 +1,7 @@
 import { mergeDuplicateRecords, scoreRecordsAndRecord } from "../objectBuilder";
 import { clean, sleep } from "../utility";
 import { getObjects } from "./parser";
+import { closeBrowser } from "./memoizer";
 import { Game } from "../types/game";
 
 
@@ -11,28 +12,32 @@ export async function getAllWeights(): Promise<void> {
     // unless there is an anamoly, which we wouldn't want to pull in anyway
     const INTERVAL = 0.015;
 
-    for (let count = 1; count < 4.9; count += INTERVAL) {
+    try {
+        for (let count = 1; count < 4.9; count += INTERVAL) {
 
-        const min = Number(count - INTERVAL).toFixed(3);
+            const min = Number(count - INTERVAL).toFixed(3);
 
-        // a slight margin to account for rounding, duplicate board games are removed later on
-        const max = Number(count + INTERVAL/3).toFixed(3);
+            // a slight margin to account for rounding, duplicate board games are removed later on
+            const max = Number(count + INTERVAL/3).toFixed(3);
 
-        console.log(min, max);
+            console.log(min, max);
 
-        const { type, data } = await getObjects(min, max);
-        arr.push(...clean(data));
+            const { type, data } = await getObjects(min, max);
+            arr.push(...clean(data));
 
-        console.log("the data has length ", data.length);
-        console.log("the results were", type);
-        console.log("getting objects for, ", min, max);
+            console.log("the data has length ", data.length);
+            console.log("the results were", type);
+            console.log("getting objects for, ", min, max);
 
-        // 10-60 second wait
-        const duration = 10000 + Math.random() * 1000 * (Math.random() * 50);
-        if (type === "call") {
-            console.log("made a call to bgg, sleeping for ", duration);
-            await sleep(duration);
+            // 10-60 second wait
+            const duration = 10000 + Math.random() * 1000 * (Math.random() * 50);
+            if (type === "call") {
+                console.log("made a call to bgg, sleeping for ", duration);
+                await sleep(duration);
+            }
         }
+    } finally {
+        await closeBrowser();
     }
 
     console.log("array has length ", arr.length);
@@ -40,45 +45,46 @@ export async function getAllWeights(): Promise<void> {
     // custom overrides
     arr.push({
         "title": "Honey Buzz Custom",
-        "average": "7.55",
+        "average": 7.55,
         "weight": 2.5, // weight override
-        "num": "7676",
-        "rank": "",
+        "num": 7676,
+        "rank": null,
         "releaseDate": "2020"
     });
 
     arr.push({
         "title": "Ego Custom",
-        "average": "7.22",
+        "average": 7.22,
         "weight": 2.29, // weight override
-        "num": "243",
-        "rank": "",
+        "num": 243,
+        "rank": null,
         "releaseDate": "2025"
     });
 
     arr.push({
         "title": "Shadowscape custom",
-        "average": "6.2",
+        "average": 6.2,
         "weight": 2.44, // weight override
-        "num": "66",
-        "rank": "",
+        "num": 66,
+        "rank": null,
         "releaseDate": "2017"
     });
 
     const removedRecords = removeUnwantedRecords(arr);
     const mergedRecords = mergeDuplicateRecords(removedRecords);
 
-    mergedRecords.sort((a, b) => parseFloat(a.rank) - parseFloat(b.rank));
-    const ranks = mergedRecords.map(x => Number(x.rank));
+    // unranked games go to the end
+    mergedRecords.sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity) || 0);
+    const ranks = new Set(mergedRecords.map(x => x.rank));
 
     for (let i = 1; i < 100000; i++) {
-        if (!ranks.includes(i)) {
+        if (!ranks.has(i)) {
             console.log("The max bgg rank represented continuously is up to ", i);
             break;
         }
     }
 
-    [0, 1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 2.25, 2.3, 2.4, 2.5, 2.6, 2.8, 3, 3.4, 3.5, 3.6, 3.8, 4, 4.5, 5].forEach((bias) => scoreRecordsAndRecord(mergedRecords, bias, 1, 2));
+    [0, 1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 2.25, 2.3, 2.4, 2.5, 2.6, 2.8, 3, 3.4, 3.5, 3.6, 3.8, 4, 4.5, 5].forEach((bias) => scoreRecordsAndRecord(mergedRecords, bias));
     console.log("Records recorded");
 }
 

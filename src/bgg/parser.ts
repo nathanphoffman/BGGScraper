@@ -4,6 +4,12 @@ import { memoize } from "./memoizer";
 import { Game } from "../types/game";
 import * as cheerio from "cheerio";
 
+// unranked games have no number in the rank column
+function parseRank(txt: string): number | null {
+    const rank = cleanup(txt);
+    return rank ? Number(rank) : null;
+}
+
 export function getObjects(min: string, max: string): Promise<{ data: (Game | undefined)[]; type: string }> {
 
     return memoize(getLinkByWeight(min, max))
@@ -19,12 +25,12 @@ export function getObjects(min: string, max: string): Promise<{ data: (Game | un
                     const ratings = $game.find('td.collection_bggrating');
                     return {
                         title: title.text(),
-                        average: cleanup(ratings.eq(1).text()),
+                        average: Number(cleanup(ratings.eq(1).text())),
                         weight: (Number(min) + Number(max)) / 2,
-                        num: cleanup(ratings.eq(2).text()),
-                        rank: cleanup($game.find('td.collection_rank').first().text()),
+                        num: Number(cleanup(ratings.eq(2).text())),
+                        rank: parseRank($game.find('td.collection_rank').first().text()),
                         releaseDate: cleanup($game.find('span.smallerfont').first().text() ?? "")
-                    } as Game;
+                    } satisfies Game;
                 }
             });
 
