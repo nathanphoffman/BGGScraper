@@ -1,5 +1,3 @@
-import { Game } from "./types/game";
-
 export function cleanup(txt: string): string {
     return txt.replace(/[^\d.-]/g, '');
 }
@@ -14,11 +12,3 @@ export function sleep(ms: number): Promise<void> {
     });
 }
 
-export function getDupIndex(arr: Game[], item: Game, index: number): number {
-    let idx = 0;
-    for (let element of arr) {
-        if (element.title === item.title && element.releaseDate === item.releaseDate && idx !== index) return idx;
-        idx++;
-    }
-    return -1;
-}

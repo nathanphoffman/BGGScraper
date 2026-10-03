@@ -39,22 +39,21 @@ async function fetchWithBrowser(link: string): Promise<string> {
     }
 }
 
-export function memoize(link: string): Promise<{ data: string; type: string }> {
+export async function memoize(link: string): Promise<{ data: string; type: string }> {
     try {
         const cached = readCache(link);
         if (cached) {
             console.log("found cache");
-            return Promise.resolve({ data: cached, type: "cache" });
+            return { data: cached, type: "cache" };
         }
 
         console.log("NO CACHE FOUND - MAKING CALL TO BGG");
-        return fetchWithBrowser(link).then((html) => {
-            writeCache(link, html);
-            return { data: html, type: "call" };
-        });
+        const html = await fetchWithBrowser(link);
+        writeCache(link, html);
+        return { data: html, type: "call" };
     }
     catch (err) {
-        console.log("a cache error was encountered");
+        console.log("an error was encountered fetching or caching", link);
         throw err;
     }
 }

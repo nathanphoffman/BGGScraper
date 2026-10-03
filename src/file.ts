@@ -15,7 +15,6 @@ export function getFileText(path: string): string | null {
     return null;
 }
 
-export function makeDirectory(dir: string, fn: () => void): void {
-    if (!dir) return;
-    fs.mkdir(dir, { recursive: true }, fn);
+export function makeDirectory(dir: string): void {
+    fs.mkdirSync(dir, { recursive: true });
 }

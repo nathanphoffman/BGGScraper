@@ -1,23 +1,25 @@
 import { writeFile, writeFileText, makeDirectory } from "./file";
-import { clean, getDupIndex } from "./utility";
 import { Game } from "./types/game";
+
+// each game gets its own copy so one bias run can't change the scores of another
+function copyRecords(records: Game[]): Game[] {
+    return records.map(record => ({ ...record }));
+}
 
 export function mergeDuplicateRecords(arr: Game[]): Game[] {
 
-    const processedIndexes: number[] = [];
-    const unDuped = arr.map((item, idx) => {
+    // dups mean a game was caught on either end of the divide of pagination by weighting,
+    // so average all of their weights for a more accurate reading
+    const groups = new Map<string, Game[]>();
+    for (const item of arr) {
+        const key = `${item.title}|${item.releaseDate}`;
+        groups.set(key, [...(groups.get(key) ?? []), item]);
+    }
 
-        const dupIndex = getDupIndex(arr, item, idx);
-        if (dupIndex === -1 || processedIndexes.includes(idx)) return item;
-
-        // merge weights for more accurate reading -- as dups means they caught on either end of the divide of pagination by weighting
-        const dupItem = arr[dupIndex];
-        processedIndexes.push(Number(dupIndex));
-        arr[dupIndex].weight = (dupItem.weight + item.weight) / 2;
-        return undefined;
-    });
-
-    return clean(unDuped);
+    return [...groups.values()].map(dups => ({
+        ...dups[0],
+        weight: dups.reduce((sum, dup) => sum + dup.weight, 0) / dups.length
+    }));
 }
 
 function getRankedList(records: Game[]): string {
@@ -95,11 +97,12 @@ function getCalculatedBias(score: number, biasFactor: number, numberOfRatings: n
 
 export function getRecordsWithBias(records: Game[], bias: number, bias_multiplier: number, bias_base: number): Game[] {
 
-    for (let record of records) {
+    const copies = copyRecords(records);
+    for (let record of copies) {
         record.score = getScoreWithBias(record, bias, bias_multiplier, bias_base);
     }
 
-    return getRecordsWithScores(records);
+    return getRecordsWithScores(copies);
 }
 
 function getRecordsWithScores(records: Game[]): Game[] {
@@ -108,45 +111,45 @@ function getRecordsWithScores(records: Game[]): Game[] {
 
 export function getRecordsWithLightToHeavyBias(records: Game[]): Game[] {
 
-    for (let record of records) {
+    const copies = copyRecords(records);
+    for (let record of copies) {
         if (!record.weight || isNaN(record.weight)) continue;
         const newBias = record.weight < 2 ? 2 : 1.33 + record.weight / 3;
         record.score = getCalculatedBias(record.score ?? 0, newBias, Number(record.num));
     }
 
-    return getRecordsWithScores(records);
+    return getRecordsWithScores(copies);
 }
 
 export function scoreRecordsAndRecord(records: Game[], bias: number, bias_multiplier: number, bias_base: number): void {
 
-    makeDirectory(getPath(String(bias), String(bias_multiplier)), () => {
+    const path: string = getPath(String(bias), String(bias_multiplier));
+    makeDirectory(path);
 
-        const newRecords = getRecordsWithBias(records, bias, bias_multiplier, bias_base);
+    const newRecords = getRecordsWithBias(records, bias, bias_multiplier, bias_base);
 
-        const path: string = getPath(String(bias), String(bias_multiplier));
+    newRecords.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    writeFile(newRecords, `${path}/raw_objects.json`);
 
-        newRecords.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-        writeFile(newRecords, `${path}/raw_objects.json`);
+    const list = getRankedList(newRecords);
+    writeFileText(list, `${path}/ALL_RANKINGS.txt`);
 
-        const list = getRankedList([...newRecords]);
-        writeFileText(list, `${path}/ALL_RANKINGS.txt`);
+    if (bias === 0) {
+        // builds on top of the scores from getRecordsWithBias
+        const preparedRecords = getRecordsWithLightToHeavyBias(newRecords);
+        preparedRecords.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+        const heavyBias = getRankedList(preparedRecords);
+        writeFileText(heavyBias, `${path}/BIASED_AGAINST_HEAVY.txt`);
+    }
 
-        if (bias === 0) {
-            const preparedRecords = getRecordsWithLightToHeavyBias([...records]);
-            preparedRecords.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-            const heavyBias = getRankedList([...preparedRecords]);
-            writeFileText(heavyBias, `${path}/BIASED_AGAINST_HEAVY.txt`);
-        }
+    const mostDisagreed = getMostDisagreedUpon(copyRecords(newRecords));
+    writeFileText(mostDisagreed, `${path}/disagreement.txt`);
 
-        const mostDisagreed = getMostDisagreedUpon([...newRecords]);
-        writeFileText(mostDisagreed, `${path}/disagreement.txt`);
+    const mostRecent = getMostRecent(newRecords);
+    writeFileText(mostRecent, `${path}/RANKINGS_BY_YEAR.txt`);
 
-        const mostRecent = getMostRecent([...newRecords]);
-        writeFileText(mostRecent, `${path}/RANKINGS_BY_YEAR.txt`);
-
-        const favorNewGames = getNewGameBias([...newRecords]);
-        writeFileText(favorNewGames, `${path}/RANKINGS_BIAS_NEW.txt`);
-    });
+    const favorNewGames = getNewGameBias(copyRecords(newRecords));
+    writeFileText(favorNewGames, `${path}/RANKINGS_BIAS_NEW.txt`);
 }
 
 function getPath(bias: string, bias_multiplier: string): string {
