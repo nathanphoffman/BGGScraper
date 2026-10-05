@@ -47,7 +47,9 @@ export async function closeBrowser(): Promise<void> {
     browser = null;
 }
 
-export async function memoize(link: string): Promise<{ data: string; type: string }> {
+export type FetchSource = "cache" | "call";
+
+export async function memoize(link: string): Promise<{ data: string; type: FetchSource }> {
     try {
         const cached = readCache(link);
         if (cached) {

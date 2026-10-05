@@ -27,15 +27,19 @@ function formatRank(rank: number | null): string {
     return rank === null ? '' : String(rank);
 }
 
+function formatListLine(game: Game, idx: number): string {
+    return `${idx + 1}. ${game.title} (${game.releaseDate}) #${formatRank(game.rank)}`;
+}
+
 function getRankedList(records: Game[]): string {
-    return records.map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${formatRank(game.rank)}`).join('\n');
+    return records.map(formatListLine).join('\n');
 }
 
 function getMostDisagreedUpon(records: Game[]): string {
     let idx = 1;
 
     // there is no point in getting more than top 1000 as they may be poor and strange
-    for (let record of records) {
+    for (const record of records) {
         record.disagree = record.rank !== null && record.rank > 0 && record.rank < 1000 ? record.rank - idx : undefined;
         record.newRank = idx;
         idx++;
@@ -49,7 +53,7 @@ function getMostRecent(records: Game[]): string {
     let output = '';
     const currentYear = new Date().getFullYear();
     for (let year = currentYear; year > 2000; year--) {
-        const games = records.filter(x => Number(x.releaseDate) === year).map((game, idx) => `${idx + 1}. ${game.title} (${game.releaseDate}) #${formatRank(game.rank)}`);
+        const games = records.filter(x => Number(x.releaseDate) === year).map(formatListLine);
         const topGames = games.slice(0, 75).join('\n');
         output += `${year}\n----------\n${topGames}\n\n-----------\n`;
     }
@@ -65,7 +69,7 @@ function getNewGameBias(records: Game[]): string {
     const oldCutoffYear = recentCutoffYear - 5;
     const modifier = 1.15;
 
-    for (let record of records) {
+    for (const record of records) {
         // if it is a very old game or we don't know the date we punish it even more:
         if (!record.releaseDate || Number(record.releaseDate) < oldCutoffYear) {
             record.score = (record.score ?? 0) * (2 - modifier);
@@ -102,7 +106,7 @@ function getCalculatedBias(score: number, biasFactor: number, numberOfRatings: n
 export function getRecordsWithBias(records: Game[], bias: number): Game[] {
 
     const copies = copyRecords(records);
-    for (let record of copies) {
+    for (const record of copies) {
         record.score = getScoreWithBias(record, bias);
     }
 

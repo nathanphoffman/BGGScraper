@@ -18,10 +18,10 @@ export async function getAllWeights(): Promise<void> {
         for (let step = 0; 1 + step * INTERVAL < 4.9; step++) {
             const count = 1 + step * INTERVAL;
 
-            const min = Number(count - INTERVAL).toFixed(3);
+            const min = (count - INTERVAL).toFixed(3);
 
             // a slight margin to account for rounding, duplicate board games are removed later on
-            const max = Number(count + INTERVAL/3).toFixed(3);
+            const max = (count + INTERVAL / 3).toFixed(3);
 
             const { type, data } = await getObjects(min, max);
             arr.push(...data);
@@ -45,7 +45,10 @@ export async function getAllWeights(): Promise<void> {
     console.log(`Found ${mergedRecords.length} games`);
 
     // unranked games go to the end
-    mergedRecords.sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity) || 0);
+    mergedRecords.sort((a, b) => {
+        if (a.rank === b.rank) return 0;
+        return (a.rank ?? Infinity) < (b.rank ?? Infinity) ? -1 : 1;
+    });
     const ranks = new Set(mergedRecords.map(x => x.rank));
 
     for (let i = 1; i < 100000; i++) {
