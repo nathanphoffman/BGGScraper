@@ -36,13 +36,13 @@ function getMostDisagreedUpon(records: Game[]): string {
 
     // there is no point in getting more than top 1000 as they may be poor and strange
     for (let record of records) {
-        record.disagree = record.rank !== null && record.rank > 0 && record.rank < 1000 ? record.rank - idx : -9999;
+        record.disagree = record.rank !== null && record.rank > 0 && record.rank < 1000 ? record.rank - idx : undefined;
         record.newRank = idx;
         idx++;
     }
 
     records.sort((a, b) => (b.disagree ?? 0) - (a.disagree ?? 0));
-    return records.filter(x => x.disagree !== -9999).map((game) => `${game.title} (${game.releaseDate}) BGG #${formatRank(game.rank)} -> NOW #${game.newRank}, ${-(game.disagree ?? 0)}`).join('\n');
+    return records.filter(x => x.disagree !== undefined).map((game) => `${game.title} (${game.releaseDate}) BGG #${formatRank(game.rank)} -> NOW #${game.newRank}, ${-(game.disagree ?? 0)}`).join('\n');
 }
 
 function getMostRecent(records: Game[]): string {
@@ -115,9 +115,9 @@ function getRecordsWithScores(records: Game[]): Game[] {
 
 export function getRecordsWithLightToHeavyBias(records: Game[]): Game[] {
 
-    const copies = copyRecords(records);
-    for (let record of copies) {
-        if (!record.weight || isNaN(record.weight)) continue;
+    // games without a usable weight can't be scored here, so they are left out
+    const copies = copyRecords(records).filter(record => record.weight && !isNaN(record.weight));
+    for (const record of copies) {
         const newBias = record.weight < 2 ? 2 : 1.33 + record.weight / 3;
         record.score = getCalculatedBias(record.score ?? 0, newBias, record.num);
     }

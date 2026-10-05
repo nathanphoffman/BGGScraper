@@ -14,7 +14,9 @@ export async function getAllWeights(): Promise<void> {
     const INTERVAL = 0.015;
 
     try {
-        for (let count = 1; count < 4.9; count += INTERVAL) {
+        // count is computed from an integer step so rounding errors can't build up
+        for (let step = 0; 1 + step * INTERVAL < 4.9; step++) {
+            const count = 1 + step * INTERVAL;
 
             const min = Number(count - INTERVAL).toFixed(3);
 
