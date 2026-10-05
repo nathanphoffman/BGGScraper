@@ -51,11 +51,9 @@ export async function memoize(link: string): Promise<{ data: string; type: strin
     try {
         const cached = readCache(link);
         if (cached) {
-            console.log("found cache");
             return { data: cached, type: "cache" };
         }
 
-        console.log("NO CACHE FOUND - MAKING CALL TO BGG");
         const html = await fetchWithBrowser(link);
         writeCache(link, html);
         return { data: html, type: "call" };

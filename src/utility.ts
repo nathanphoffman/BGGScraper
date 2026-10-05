@@ -1,8 +1,10 @@
-export function cleanup(txt: string): string {
+// keeps only digits, dots and minus signs, e.g. "Rating: 7.5" -> "7.5"
+export function stripNonNumeric(txt: string): string {
     return txt.replace(/[^\d.-]/g, '');
 }
 
-export function clean<T>(arr: (T | undefined | null | false)[]): T[] {
+// removes undefined, null and false items from a list
+export function removeEmpty<T>(arr: (T | undefined | null | false)[]): T[] {
     return arr.filter((x): x is T => !!x);
 }
 

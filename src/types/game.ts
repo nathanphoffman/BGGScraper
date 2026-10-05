@@ -7,5 +7,5 @@ export interface Game {
     releaseDate: string;
     score?: number;
     disagree?: number;
-    nateRank?: number;
+    newRank?: number;
 }

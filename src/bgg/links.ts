@@ -1,3 +1,32 @@
+import { BGG_USERNAME } from "../config";
+
 export function getLinkByWeight(min_weight: string, max_weight: string): string {
-    return `https://boardgamegeek.com/search/boardgame?sort=rank&advsearch=1&q=&include%5Bdesignerid%5D=&include%5Bpublisherid%5D=&geekitemname=&range%5Byearpublished%5D%5Bmin%5D=&range%5Byearpublished%5D%5Bmax%5D=&range%5Bminage%5D%5Bmax%5D=&range%5Bnumvoters%5D%5Bmin%5D=&range%5Bnumweights%5D%5Bmin%5D=&range%5Bminplayers%5D%5Bmax%5D=&range%5Bmaxplayers%5D%5Bmin%5D=&range%5Bleastplaytime%5D%5Bmin%5D=&range%5Bplaytime%5D%5Bmax%5D=&floatrange%5Bavgrating%5D%5Bmin%5D=&floatrange%5Bavgrating%5D%5Bmax%5D=&floatrange%5Bavgweight%5D%5Bmin%5D=${min_weight}&floatrange%5Bavgweight%5D%5Bmax%5D=${max_weight}&colfiltertype=&searchuser=taloskhaos&nosubtypes%5B0%5D=boardgameexpansion&playerrangetype=normal&B1=Submit`;
+    // every field of bgg's advanced search form is sent, even empty ones, so the url matches what is already in the cache
+    const params = new URLSearchParams([
+        ['sort', 'rank'],
+        ['advsearch', '1'],
+        ['q', ''],
+        ['include[designerid]', ''],
+        ['include[publisherid]', ''],
+        ['geekitemname', ''],
+        ['range[yearpublished][min]', ''],
+        ['range[yearpublished][max]', ''],
+        ['range[minage][max]', ''],
+        ['range[numvoters][min]', ''],
+        ['range[numweights][min]', ''],
+        ['range[minplayers][max]', ''],
+        ['range[maxplayers][min]', ''],
+        ['range[leastplaytime][min]', ''],
+        ['range[playtime][max]', ''],
+        ['floatrange[avgrating][min]', ''],
+        ['floatrange[avgrating][max]', ''],
+        ['floatrange[avgweight][min]', min_weight],
+        ['floatrange[avgweight][max]', max_weight],
+        ['colfiltertype', ''],
+        ['searchuser', BGG_USERNAME],
+        ['nosubtypes[0]', 'boardgameexpansion'],
+        ['playerrangetype', 'normal'],
+        ['B1', 'Submit'],
+    ]);
+    return `https://boardgamegeek.com/search/boardgame?${params}`;
 }

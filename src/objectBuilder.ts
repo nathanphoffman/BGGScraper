@@ -1,9 +1,6 @@
 import { writeFile, writeFileText, makeDirectory } from "./file";
 import { Game } from "./types/game";
-
-// how strongly distance from the preferred weight lowers a score
-const BIAS_BASE = 2;
-const BIAS_MULTIPLIER = 1;
+import { BIAS_BASE, BIAS_MULTIPLIER, MAX_AVERAGE_RATING } from "./config";
 
 // each game gets its own copy so one bias run can't change the scores of another
 function copyRecords(records: Game[]): Game[] {
@@ -37,15 +34,15 @@ function getRankedList(records: Game[]): string {
 function getMostDisagreedUpon(records: Game[]): string {
     let idx = 1;
 
-    // there is no point in getting more than top 500 as they may be poor and strange
+    // there is no point in getting more than top 1000 as they may be poor and strange
     for (let record of records) {
         record.disagree = record.rank !== null && record.rank > 0 && record.rank < 1000 ? record.rank - idx : -9999;
-        record.nateRank = idx;
+        record.newRank = idx;
         idx++;
     }
 
     records.sort((a, b) => (b.disagree ?? 0) - (a.disagree ?? 0));
-    return records.filter(x => x.disagree !== -9999).map((game) => `${game.title} (${game.releaseDate}) BGG #${formatRank(game.rank)} -> NOW #${game.nateRank}, ${-(game.disagree ?? 0)}`).join('\n');
+    return records.filter(x => x.disagree !== -9999).map((game) => `${game.title} (${game.releaseDate}) BGG #${formatRank(game.rank)} -> NOW #${game.newRank}, ${-(game.disagree ?? 0)}`).join('\n');
 }
 
 function getMostRecent(records: Game[]): string {
@@ -92,7 +89,7 @@ function getScoreWithBias(record: Game, bias: number): number {
     if (record.weight > bias) bias_distance = bias_distance * 2;
     const biasFactor = bias === 0 ? BIAS_BASE : BIAS_BASE + BIAS_MULTIPLIER * bias_distance;
 
-    const cappedAverage = record.average > 8.75 ? 8.75 : record.average;
+    const cappedAverage = Math.min(record.average, MAX_AVERAGE_RATING);
 
     const calculatedBias = getCalculatedBias(cappedAverage, biasFactor, record.num);
     return calculatedBias;
@@ -128,7 +125,7 @@ export function getRecordsWithLightToHeavyBias(records: Game[]): Game[] {
     return getRecordsWithScores(copies);
 }
 
-export function scoreRecordsAndRecord(records: Game[], bias: number): void {
+export function writeRankingsForBias(records: Game[], bias: number): void {
 
     const path: string = getPath(bias);
     makeDirectory(path);

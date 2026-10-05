@@ -1,4 +1,4 @@
-import { cleanup } from "../utility";
+import { removeEmpty, stripNonNumeric } from "../utility";
 import { getLinkByWeight } from "./links";
 import { memoize } from "./memoizer";
 import { Game } from "../types/game";
@@ -6,11 +6,11 @@ import * as cheerio from "cheerio";
 
 // unranked games have no number in the rank column
 function parseRank(txt: string): number | null {
-    const rank = cleanup(txt);
+    const rank = stripNonNumeric(txt);
     return rank ? Number(rank) : null;
 }
 
-export function getObjects(min: string, max: string): Promise<{ data: (Game | undefined)[]; type: string }> {
+export function getObjects(min: string, max: string): Promise<{ data: Game[]; type: string }> {
 
     return memoize(getLinkByWeight(min, max))
         .then(function (response) {
@@ -25,16 +25,16 @@ export function getObjects(min: string, max: string): Promise<{ data: (Game | un
                     const ratings = $game.find('td.collection_bggrating');
                     return {
                         title: title.text(),
-                        average: Number(cleanup(ratings.eq(1).text())),
+                        average: Number(stripNonNumeric(ratings.eq(1).text())),
                         weight: (Number(min) + Number(max)) / 2,
-                        num: Number(cleanup(ratings.eq(2).text())),
+                        num: Number(stripNonNumeric(ratings.eq(2).text())),
                         rank: parseRank($game.find('td.collection_rank').first().text()),
-                        releaseDate: cleanup($game.find('span.smallerfont').first().text() ?? "")
+                        releaseDate: stripNonNumeric($game.find('span.smallerfont').first().text() ?? "")
                     } satisfies Game;
                 }
             });
 
-            return { data: results, type: response.type };
+            return { data: removeEmpty(results), type: response.type };
         });
 
 }
