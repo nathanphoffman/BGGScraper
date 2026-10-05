@@ -45,8 +45,9 @@ export function getRecordsWithLightToHeavyBias(records: Game[]): Game[] {
     return getRecordsWithScores(copies);
 }
 
-// changes the scores of the records it is given, so pass in a copy
-export function applyNewGameBias(records: Game[]): Game[] {
+export function applyNewGameBias(originalRecords: Game[]): Game[] {
+
+    const records = copyRecords(originalRecords);
 
     // +1 covers the games that are newest releases
     const currentYear = new Date().getFullYear() + 1;

@@ -15,7 +15,8 @@ function getRankedList(records: Game[]): string {
     return records.map(formatListLine).join('\n');
 }
 
-function getMostDisagreedUpon(records: Game[]): string {
+function getMostDisagreedUpon(originalRecords: Game[]): string {
+    const records = copyRecords(originalRecords);
     let idx = 1;
 
     // there is no point in getting more than top 1000 as they may be poor and strange
@@ -66,12 +67,12 @@ export function writeRankingsForBias(records: Game[], bias: number): void {
         writeFileText(heavyBias, `${path}/BIASED_AGAINST_HEAVY.txt`);
     }
 
-    const mostDisagreed = getMostDisagreedUpon(copyRecords(newRecords));
+    const mostDisagreed = getMostDisagreedUpon(newRecords);
     writeFileText(mostDisagreed, `${path}/disagreement.txt`);
 
     const mostRecent = getMostRecent(newRecords);
     writeFileText(mostRecent, `${path}/RANKINGS_BY_YEAR.txt`);
 
-    const favorNewGames = getRankedList(applyNewGameBias(copyRecords(newRecords)));
+    const favorNewGames = getRankedList(applyNewGameBias(newRecords));
     writeFileText(favorNewGames, `${path}/RANKINGS_BIAS_NEW.txt`);
 }
