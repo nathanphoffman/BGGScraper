@@ -8,6 +8,5 @@
     "outDir": "dist",
     "skipLibCheck": true,
     "strict": true
-  },
-  "lib": ["es2022"]
+  }
 }

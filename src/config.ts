@@ -1,7 +1,11 @@
 import { Game } from "./types/game";
 
-// the bgg user whose collection is used in the search
-export const BGG_USERNAME = 'taloskhaos';
+// the bgg user whose collection is used in the search, set in .env (see .env.example)
+const username = process.env.BGG_USERNAME;
+if (!username) {
+    throw new Error("BGG_USERNAME is not set. Copy .env.example to .env and put your bgg username in it.");
+}
+export const BGG_USERNAME: string = username;
 
 // one output folder is made per weight preference, 0 means no weight preference
 export const WEIGHT_PREFERENCES = [0, 1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 2.25, 2.3, 2.4, 2.5, 2.6, 2.8, 3, 3.4, 3.5, 3.6, 3.8, 4, 4.5, 5];

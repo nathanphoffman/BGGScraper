@@ -6,6 +6,7 @@ A series of re-rankings of BGG's game list, using a scraper and different algori
 
 ```
 npm install
+cp .env.example .env   # then put your bgg username in .env
 npm start
 ```
 

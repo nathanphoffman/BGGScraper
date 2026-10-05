@@ -12,8 +12,7 @@ function getScoreWithBias(record: Game, bias: number): number {
 
     const cappedAverage = Math.min(record.average, MAX_AVERAGE_RATING);
 
-    const calculatedBias = getCalculatedBias(cappedAverage, biasFactor, record.num);
-    return calculatedBias;
+    return getCalculatedBias(cappedAverage, biasFactor, record.num);
 }
 
 function getCalculatedBias(score: number, biasFactor: number, numberOfRatings: number): number {
@@ -21,7 +20,7 @@ function getCalculatedBias(score: number, biasFactor: number, numberOfRatings: n
 }
 
 function getRecordsWithScores(records: Game[]): Game[] {
-    return [...records.filter((x) => !!x.score)];
+    return records.filter((x) => !!x.score);
 }
 
 export function getRecordsWithBias(records: Game[], bias: number): Game[] {
