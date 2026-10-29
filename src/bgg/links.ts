@@ -1,6 +1,6 @@
 import { BGG_USERNAME } from "../config";
 
-export function getLinkByWeight(min_weight: string, max_weight: string): string {
+export function getLinkByWeight(min_weight: string, max_weight: string, startYear?: number): string {
     // every field of bgg's advanced search form is sent, even empty ones, so the url matches what is already in the cache
     const params = new URLSearchParams([
         ['sort', 'rank'],
@@ -9,7 +9,7 @@ export function getLinkByWeight(min_weight: string, max_weight: string): string 
         ['include[designerid]', ''],
         ['include[publisherid]', ''],
         ['geekitemname', ''],
-        ['range[yearpublished][min]', ''],
+        ['range[yearpublished][min]', startYear?.toString() ?? ''],
         ['range[yearpublished][max]', ''],
         ['range[minage][max]', ''],
         ['range[numvoters][min]', ''],

@@ -13,9 +13,10 @@ function cachePathForUrl(url: string): string {
     return path.join(CACHE_DIR, `${hash}.html`);
 }
 
-function readCache(url: string): string | null {
+// a cached page older than maxAgeMs counts as missing, by default pages never expire
+function readCache(url: string, maxAgeMs: number): string | null {
     const filePath = cachePathForUrl(url);
-    if (fs.existsSync(filePath)) {
+    if (fs.existsSync(filePath) && Date.now() - fs.statSync(filePath).mtimeMs <= maxAgeMs) {
         return fs.readFileSync(filePath, 'utf8');
     }
     return null;
@@ -49,9 +50,9 @@ export async function closeBrowser(): Promise<void> {
 
 export type FetchSource = "cache" | "call";
 
-export async function memoize(link: string): Promise<{ data: string; type: FetchSource }> {
+export async function memoize(link: string, maxAgeMs = Infinity): Promise<{ data: string; type: FetchSource }> {
     try {
-        const cached = readCache(link);
+        const cached = readCache(link, maxAgeMs);
         if (cached) {
             return { data: cached, type: "cache" };
         }

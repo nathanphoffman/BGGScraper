@@ -10,7 +10,7 @@ cp .env.example .env   # then put your bgg username in .env
 npm start
 ```
 
-Pages are cached in `cache/`, so only pages that aren't cached are fetched from BGG. Results are written to `output/`, with one folder per weight preference (`output/0` has no weight preference). Settings like excluded titles, custom games and the weight preferences are in `src/config.ts`.
+Games are stored in `data/games.json`. If it exists, a run only fetches last year's and this year's games from BGG and merges them in. The first run, or `npm start -- --full`, fetches everything. Pages are cached in `cache/`, so only pages that aren't cached are fetched from BGG (the recent-year pages are re-fetched after a day). Results are written to `output/`, with one folder per weight preference (`output/0` has no weight preference). Settings like excluded titles, custom games and the weight preferences are in `src/config.ts`.
 
 ## Reading the lists
 
