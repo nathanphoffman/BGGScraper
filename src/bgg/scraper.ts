@@ -27,34 +27,42 @@ const SLICE_MARGIN = 0.005;
 // bgg returns 100 results per page and we don't paginate, so a full page means games may have been cut off
 const PAGE_SIZE = 100;
 
-// the highest rank we look for when checking that ranks are continuous
-const MAX_RANK_CHECKED = 100000;
-
 interface ScrapeOptions extends PageOptions {
     interval: number;
 }
 
-function countRequests(interval: number): number {
-    let requests = 0;
-    while (1 + requests * interval < MAX_WEIGHT) requests++;
-    return requests;
+interface WeightSlice {
+    min: string;
+    max: string;
+}
+
+function getWeightSlices(interval: number): WeightSlice[] {
+    const slices: WeightSlice[] = [];
+
+    // count is computed from an integer step so rounding errors can't build up
+    for (let step = 0; 1 + step * interval < MAX_WEIGHT; step++) {
+        const count = 1 + step * interval;
+        slices.push({
+            min: (count - interval).toFixed(3),
+            max: (count + SLICE_MARGIN).toFixed(3),
+        });
+    }
+
+    return slices;
+}
+
+// the more requests there are, the longer we wait between them: requests / 5 seconds, plus 1-10 seconds
+function getWaitMs(requests: number): number {
+    return (requests / 5 + 1 + Math.random() * 9) * 1000;
 }
 
 async function fetchGames({ interval, ...years }: ScrapeOptions): Promise<Game[]> {
 
     const games: Game[] = [];
-
-    // the more requests there are, the longer we wait between them
-    const baseWait = countRequests(interval) / 5;
+    const slices = getWeightSlices(interval);
 
     try {
-        // count is computed from an integer step so rounding errors can't build up
-        for (let step = 0; 1 + step * interval < MAX_WEIGHT; step++) {
-            const count = 1 + step * interval;
-
-            const min = (count - interval).toFixed(3);
-            const max = (count + SLICE_MARGIN).toFixed(3);
-
+        for (const { min, max } of slices) {
             const { type, data } = await getObjects(min, max, years);
             games.push(...data);
             console.log(`Weight ${min}-${max}: ${data.length} games (${type === "call" ? "from bgg" : "from cache"})`);
@@ -62,9 +70,8 @@ async function fetchGames({ interval, ...years }: ScrapeOptions): Promise<Game[]
                 console.log(`Weight ${min}-${max} filled a page, lower-ranked games in it were cut off`);
             }
 
-            // requests / 5 seconds, plus 1-10 seconds
-            const duration = (baseWait + 1 + Math.random() * 9) * 1000;
             if (type === "call") {
+                const duration = getWaitMs(slices.length);
                 console.log(`Waiting ${Math.round(duration / 1000)}s before the next call to bgg`);
                 await sleep(duration);
             }
@@ -84,17 +91,6 @@ function sortByRank(records: Game[]): void {
     });
 }
 
-function logContinuousRank(records: Game[]): void {
-    const ranks = new Set(records.map(x => x.rank));
-
-    for (let i = 1; i < MAX_RANK_CHECKED; i++) {
-        if (!ranks.has(i)) {
-            console.log("The max bgg rank represented continuously is up to ", i);
-            break;
-        }
-    }
-}
-
 // scraped games replace the stored copies of themselves, then the database is saved
 function storeGames(database: Map<string, Game>, scraped: Game[]): void {
     updateDatabase(database, mergeDuplicateRecords(removeUnwantedRecords(scraped)));
@@ -108,7 +104,6 @@ function writeRankings(database: Map<string, Game>): void {
     console.log(`Found ${mergedRecords.length} games`);
 
     sortByRank(mergedRecords);
-    logContinuousRank(mergedRecords);
 
     WEIGHT_PREFERENCES.forEach((bias) => writeRankingsForBias(mergedRecords, bias));
     console.log("Records recorded");
