@@ -5,6 +5,8 @@ export interface Game {
     num: number;
     rank: number | null;
     releaseDate: string;
+    // iso date the game was last pulled from bgg
+    pulledAt?: string;
     score?: number;
     disagree?: number;
     newRank?: number;

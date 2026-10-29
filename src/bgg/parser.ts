@@ -10,8 +10,14 @@ function parseRank(txt: string): number | null {
     return rank ? Number(rank) : null;
 }
 
-export async function getObjects(min: string, max: string, startYear?: number, maxAgeMs?: number): Promise<{ data: Game[]; type: FetchSource }> {
-    const response = await memoize(getLinkByWeight(min, max, startYear), maxAgeMs);
+export interface PageOptions {
+    startYear?: number;
+    endYear?: number;
+    maxAgeMs?: number;
+}
+
+export async function getObjects(min: string, max: string, { startYear, endYear, maxAgeMs }: PageOptions = {}): Promise<{ data: Game[]; type: FetchSource }> {
+    const response = await memoize(getLinkByWeight(min, max, startYear, endYear), maxAgeMs);
     const $ = cheerio.load(response.data);
 
     const rows = $('table#collectionitems tr').toArray().slice(1);

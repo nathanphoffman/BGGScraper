@@ -1,9 +1,9 @@
 import { mergeDuplicateRecords, removeUnwantedRecords } from "../records";
-import { databaseExists, loadDatabase, saveDatabase, updateDatabase } from "../database";
+import { databaseExists, getStaleYears, loadDatabase, saveDatabase, updateDatabase } from "../database";
 import { writeRankingsForBias } from "../reports";
-import { sleep } from "../utility";
+import { DAY_MS, sleep } from "../utility";
 import { CUSTOM_GAMES, WEIGHT_PREFERENCES } from "../config";
-import { getObjects } from "./parser";
+import { getObjects, PageOptions } from "./parser";
 import { closeBrowser } from "./memoizer";
 import { Game } from "../types/game";
 
@@ -16,7 +16,10 @@ const FULL_INTERVAL = 0.015;
 
 // a recent scrape only has a year or two of games, so much wider slices still fit under bgg's 100 results per page
 const RECENT_INTERVAL = 0.2;
-const RECENT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const RECENT_MAX_AGE_MS = DAY_MS;
+
+// a year is refreshed by the refresh command once its oldest game was pulled more than this many days ago
+const STALE_AFTER_DAYS = 90;
 
 // a slice is widened by this much past its top edge to account for rounding, duplicates are removed later on
 const SLICE_MARGIN = 0.005;
@@ -27,10 +30,8 @@ const PAGE_SIZE = 100;
 // the highest rank we look for when checking that ranks are continuous
 const MAX_RANK_CHECKED = 100000;
 
-interface ScrapeOptions {
+interface ScrapeOptions extends PageOptions {
     interval: number;
-    startYear?: number;
-    maxAgeMs?: number;
 }
 
 function countRequests(interval: number): number {
@@ -39,7 +40,7 @@ function countRequests(interval: number): number {
     return requests;
 }
 
-async function fetchGames({ interval, startYear, maxAgeMs }: ScrapeOptions): Promise<Game[]> {
+async function fetchGames({ interval, ...years }: ScrapeOptions): Promise<Game[]> {
 
     const games: Game[] = [];
 
@@ -54,7 +55,7 @@ async function fetchGames({ interval, startYear, maxAgeMs }: ScrapeOptions): Pro
             const min = (count - interval).toFixed(3);
             const max = (count + SLICE_MARGIN).toFixed(3);
 
-            const { type, data } = await getObjects(min, max, startYear, maxAgeMs);
+            const { type, data } = await getObjects(min, max, years);
             games.push(...data);
             console.log(`Weight ${min}-${max}: ${data.length} games (${type === "call" ? "from bgg" : "from cache"})`);
             if (data.length >= PAGE_SIZE) {
@@ -94,19 +95,13 @@ function logContinuousRank(records: Game[]): void {
     }
 }
 
-// the first run, or --full, scrapes everything. After that only last year and this year are scraped and merged into the database
-export async function getAllWeights(): Promise<void> {
-
-    const full = process.argv.includes('--full') || !databaseExists();
-    const database = loadDatabase();
-
-    const scraped = full
-        ? await fetchGames({ interval: FULL_INTERVAL })
-        : await fetchGames({ interval: RECENT_INTERVAL, startYear: new Date().getFullYear() - 1, maxAgeMs: RECENT_MAX_AGE_MS });
-
+// scraped games replace the stored copies of themselves, then the database is saved
+function storeGames(database: Map<string, Game>, scraped: Game[]): void {
     updateDatabase(database, mergeDuplicateRecords(removeUnwantedRecords(scraped)));
     saveDatabase(database);
+}
 
+function writeRankings(database: Map<string, Game>): void {
     const games = [...database.values(), ...CUSTOM_GAMES];
 
     const mergedRecords = mergeDuplicateRecords(removeUnwantedRecords(games));
@@ -117,4 +112,36 @@ export async function getAllWeights(): Promise<void> {
 
     WEIGHT_PREFERENCES.forEach((bias) => writeRankingsForBias(mergedRecords, bias));
     console.log("Records recorded");
+}
+
+// the first run, or --full, scrapes everything. After that only last year and this year are scraped and merged into the database
+export async function getAllWeights(): Promise<void> {
+
+    const full = process.argv.includes('--full') || !databaseExists();
+    const database = loadDatabase();
+
+    const scraped = full
+        ? await fetchGames({ interval: FULL_INTERVAL })
+        : await fetchGames({ interval: RECENT_INTERVAL, startYear: new Date().getFullYear() - 1, maxAgeMs: RECENT_MAX_AGE_MS });
+
+    storeGames(database, scraped);
+    writeRankings(database);
+}
+
+// re-scrapes one year at a time for every year in the database that has gone stale, saving after each year
+export async function refreshStaleYears(): Promise<void> {
+
+    const database = loadDatabase();
+    const years = getStaleYears(database, STALE_AFTER_DAYS);
+    console.log(years.length ? `Stale years: ${years.join(", ")}` : "No stale years");
+
+    for (const year of years) {
+        console.log(`Refreshing ${year}`);
+        const scraped = await fetchGames({ interval: RECENT_INTERVAL, startYear: year, endYear: year, maxAgeMs: RECENT_MAX_AGE_MS });
+        storeGames(database, scraped);
+    }
+
+    if (years.length) {
+        writeRankings(database);
+    }
 }

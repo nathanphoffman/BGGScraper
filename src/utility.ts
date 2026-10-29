@@ -8,6 +8,8 @@ export function removeEmpty<T>(arr: (T | undefined | null | false)[]): T[] {
     return arr.filter((x): x is T => !!x);
 }
 
+export const DAY_MS = 24 * 60 * 60 * 1000;
+
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => {
         setTimeout(resolve, ms);

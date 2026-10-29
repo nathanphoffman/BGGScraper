@@ -1,4 +1,3 @@
 Todo:
--Pagination ability
 -Next up: filter the games by my own list, but this will require pagination, both show what games are not on it and what are and how they are rated
 - do occasional caching -> auto pull certain pages randomly based on date pulled to lower load everytime the app is ran
