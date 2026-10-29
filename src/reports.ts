@@ -1,6 +1,7 @@
 import { writeFile, writeFileText, makeDirectory } from "./file";
 import { Game } from "./types/game";
-import { copyRecords } from "./records";
+import { copyRecords, mergeDuplicateRecords, removeUnwantedRecords } from "./records";
+import { CUSTOM_GAMES, WEIGHT_PREFERENCES } from "./config";
 import { applyNewGameBias, getRecordsWithBias, getRecordsWithLightToHeavyBias } from "./scoring";
 
 function formatRank(rank: number | null): string {
@@ -75,4 +76,24 @@ export function writeRankingsForBias(records: Game[], bias: number): void {
 
     const favorNewGames = getRankedList(applyNewGameBias(newRecords));
     writeFileText(favorNewGames, `${path}/RANKINGS_BIAS_NEW.txt`);
+}
+
+// unranked games go to the end
+function sortByRank(records: Game[]): void {
+    records.sort((a, b) => {
+        if (a.rank === b.rank) return 0;
+        return (a.rank ?? Infinity) < (b.rank ?? Infinity) ? -1 : 1;
+    });
+}
+
+export function writeAllRankings(database: Map<string, Game>): void {
+    const games = [...database.values(), ...CUSTOM_GAMES];
+
+    const mergedRecords = mergeDuplicateRecords(removeUnwantedRecords(games));
+    console.log(`Found ${mergedRecords.length} games`);
+
+    sortByRank(mergedRecords);
+
+    WEIGHT_PREFERENCES.forEach((bias) => writeRankingsForBias(mergedRecords, bias));
+    console.log("Records recorded");
 }

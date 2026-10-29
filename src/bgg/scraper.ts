@@ -1,8 +1,7 @@
 import { mergeDuplicateRecords, removeUnwantedRecords } from "../records";
 import { databaseExists, getStaleYears, loadDatabase, saveDatabase, updateDatabase } from "../database";
-import { writeRankingsForBias } from "../reports";
+import { writeAllRankings } from "../reports";
 import { DAY_MS, sleep } from "../utility";
-import { CUSTOM_GAMES, WEIGHT_PREFERENCES } from "../config";
 import { getObjects, PageOptions } from "./parser";
 import { closeBrowser } from "./memoizer";
 import { Game } from "../types/game";
@@ -17,6 +16,9 @@ const FULL_INTERVAL = 0.015;
 // a recent scrape only has a year or two of games, so much wider slices still fit under bgg's 100 results per page
 const RECENT_INTERVAL = 0.2;
 const RECENT_MAX_AGE_MS = DAY_MS;
+
+// a recent scrape starts this many years before the current year, so games from late last year keep getting updated
+const RECENT_YEARS_BACK = 1;
 
 // a year is refreshed by the refresh command once its oldest game was pulled more than this many days ago
 const STALE_AFTER_DAYS = 90;
@@ -83,33 +85,13 @@ async function fetchGames({ interval, ...years }: ScrapeOptions): Promise<Game[]
     return games;
 }
 
-// unranked games go to the end
-function sortByRank(records: Game[]): void {
-    records.sort((a, b) => {
-        if (a.rank === b.rank) return 0;
-        return (a.rank ?? Infinity) < (b.rank ?? Infinity) ? -1 : 1;
-    });
-}
-
 // scraped games replace the stored copies of themselves, then the database is saved
 function storeGames(database: Map<string, Game>, scraped: Game[]): void {
     updateDatabase(database, mergeDuplicateRecords(removeUnwantedRecords(scraped)));
     saveDatabase(database);
 }
 
-function writeRankings(database: Map<string, Game>): void {
-    const games = [...database.values(), ...CUSTOM_GAMES];
-
-    const mergedRecords = mergeDuplicateRecords(removeUnwantedRecords(games));
-    console.log(`Found ${mergedRecords.length} games`);
-
-    sortByRank(mergedRecords);
-
-    WEIGHT_PREFERENCES.forEach((bias) => writeRankingsForBias(mergedRecords, bias));
-    console.log("Records recorded");
-}
-
-// the first run, or --full, scrapes everything. After that only last year and this year are scraped and merged into the database
+// the first run, or --full, scrapes everything. After that only the recent years are scraped and merged into the database
 export async function getAllWeights(): Promise<void> {
 
     const full = process.argv.includes('--full') || !databaseExists();
@@ -117,10 +99,10 @@ export async function getAllWeights(): Promise<void> {
 
     const scraped = full
         ? await fetchGames({ interval: FULL_INTERVAL })
-        : await fetchGames({ interval: RECENT_INTERVAL, startYear: new Date().getFullYear() - 1, maxAgeMs: RECENT_MAX_AGE_MS });
+        : await fetchGames({ interval: RECENT_INTERVAL, startYear: new Date().getFullYear() - RECENT_YEARS_BACK, maxAgeMs: RECENT_MAX_AGE_MS });
 
     storeGames(database, scraped);
-    writeRankings(database);
+    writeAllRankings(database);
 }
 
 // re-scrapes one year at a time for every year in the database that has gone stale, saving after each year
@@ -137,6 +119,6 @@ export async function refreshStaleYears(): Promise<void> {
     }
 
     if (years.length) {
-        writeRankings(database);
+        writeAllRankings(database);
     }
 }
